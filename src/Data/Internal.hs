@@ -7,9 +7,10 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON)
 
-data FRVTResponse = FRVTResponse { body :: Text } deriving Generic
+data FRVTResponse = FRVTResponse
+    { body :: Text
+    } deriving (Generic)
 
 instance ToJSON FRVTResponse
-
 
 type Token = ByteString

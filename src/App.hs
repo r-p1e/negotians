@@ -24,51 +24,122 @@ import           Network.Wai          (Application, Request, Response,
 
 
 app :: Application
-app request respond = case rawPathInfo request of
-                                  "/"       -> respond honeypot
-                                  "/events" -> events request >>= respond
-                                  _         -> respond notFound
+app request respond =
+    case rawPathInfo request of
+        "/" -> respond honeypot
+        "/events" -> events request >>= respond
+        _ -> respond notFound
 
 honeypot :: Response
-honeypot = responseLBS status200 [("Content-Type", "text/plain")] "What are you doing here, man?"
+honeypot =
+    responseLBS
+        status200
+        [("Content-Type", "text/plain")]
+        "What are you doing here, man?"
 
 
 events :: Request -> IO Response
-events request = case parseMethod (requestMethod request) of
-                   Left err -> return (responseLBS status400 [("Content-Type", "application/json")] (Aeson.encode FRVTResponse { body = "Can't parse method"}))
-                   Right mtd -> case mtd of
-                                  PUT -> case tryToExtractToken (requestHeaders request) of
-                                           Left err -> return (responseLBS status403 [("Content-Type", "application/json")] (Aeson.encode FRVTResponse { body = "No token"}))
-                                           Right res -> lazyRequestBody request >>= \bdy -> case parseEvent bdy of
-                                                          Left err -> return (responseLBS status500 [("Content-Type", "application/json")] (Aeson.encode FRVTResponse {body = "can't parse event"}))
-                                                          Right event -> if isNotIntegrity event
-                                                                             then return (responseLBS (mkStatus 422 "Unprocessable Entity") [("Content-Type", "application/json")] (Aeson.encode FRVTResponse { body = "Broken integrity"}))
-                                                                             else registerEvent res (eventEntity event) >> return (responseLBS accepted202 [("Content-Type", "application/json")] (Aeson.encode FRVTResponse { body = "Event registered"}))
-                                  _   -> return (responseLBS status405 [("Content-Type", "application/json")] (Aeson.encode FRVTResponse { body = "Support only PUT method yet."}))
+events request =
+    case parseMethod (requestMethod request) of
+        Left err ->
+            return
+                (responseLBS
+                     status400
+                     [("Content-Type", "application/json")]
+                     (Aeson.encode
+                          FRVTResponse
+                          { body = "Can't parse method"
+                          }))
+        Right mtd ->
+            case mtd of
+                PUT ->
+                    case tryToExtractToken (requestHeaders request) of
+                        Left err ->
+                            return
+                                (responseLBS
+                                     status403
+                                     [("Content-Type", "application/json")]
+                                     (Aeson.encode
+                                          FRVTResponse
+                                          { body = "No token"
+                                          }))
+                        Right res ->
+                            lazyRequestBody request >>=
+                            \bdy ->
+                                 case parseEvent bdy of
+                                     Left err ->
+                                         return
+                                             (responseLBS
+                                                  status500
+                                                  [ ( "Content-Type"
+                                                    , "application/json")]
+                                                  (Aeson.encode
+                                                       FRVTResponse
+                                                       { body = "can't parse event"
+                                                       }))
+                                     Right event ->
+                                         if isNotIntegrity event
+                                             then return
+                                                      (responseLBS
+                                                           (mkStatus
+                                                                422
+                                                                "Unprocessable Entity")
+                                                           [ ( "Content-Type"
+                                                             , "application/json")]
+                                                           (Aeson.encode
+                                                                FRVTResponse
+                                                                { body = "Broken integrity"
+                                                                }))
+                                             else registerEvent
+                                                      res
+                                                      (eventEntity event) >>
+                                                  return
+                                                      (responseLBS
+                                                           accepted202
+                                                           [ ( "Content-Type"
+                                                             , "application/json")]
+                                                           (Aeson.encode
+                                                                FRVTResponse
+                                                                { body = "Event registered"
+                                                                }))
+                _ ->
+                    return
+                        (responseLBS
+                             status405
+                             [("Content-Type", "application/json")]
+                             (Aeson.encode
+                                  FRVTResponse
+                                  { body = "Support only PUT method yet."
+                                  }))
 
 
 notFound :: Response
-notFound = responseLBS status404 [("Content-Type", "text/plain")] "404 - Not Found"
+notFound =
+    responseLBS status404 [("Content-Type", "text/plain")] "404 - Not Found"
 
 
 tryToExtractToken :: RequestHeaders -> Either String Token
-tryToExtractToken []                          = Left "no token"
-tryToExtractToken ((header, token):xs) = if header == hAuthorization
-                                           then Right token
-                                           else tryToExtractToken xs
+tryToExtractToken [] = Left "no token"
+tryToExtractToken ((header,token):xs) =
+    if header == hAuthorization
+        then Right token
+        else tryToExtractToken xs
 
 parseEvent :: ByteString -> Either String Aeson.Object
 parseEvent = Aeson.eitherDecode
 
 isNotIntegrity :: Aeson.Object -> Bool
-isNotIntegrity event = case HashMap.lookup "crc" event of
-                         Just (Number crcvalue) -> case HashMap.lookup "entities" event of
-                                            Nothing -> True
-                                            Just entities -> case Scientific.toBoundedInteger crcvalue :: Maybe Word32 of
-                                                               Nothing -> True
-                                                               Just crcvalue' -> 
-                                                                                  not (crc32 (Aeson.encode entities) == crcvalue')
-                         _ -> True
+isNotIntegrity event =
+    case HashMap.lookup "crc" event of
+        Just (Number crcvalue) ->
+            case HashMap.lookup "entities" event of
+                Nothing -> True
+                Just entities ->
+                    case Scientific.toBoundedInteger crcvalue :: Maybe Word32 of
+                        Nothing -> True
+                        Just crcvalue' ->
+                            not (crc32 (Aeson.encode entities) == crcvalue')
+        _ -> True
 
 eventEntity :: Aeson.Object -> ByteString
 eventEntity = fromMaybe "" . Just . Aeson.encode <$> HashMap.lookup "entities"
