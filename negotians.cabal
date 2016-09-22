@@ -17,17 +17,12 @@ library
   hs-source-dirs:      src
   other-modules:       Proto.EventLog
   exposed-modules:     App
-  build-depends:       aeson >= 0.11,
+  build-depends:       
                        base >= 4.7 && < 5,
                        bytestring >= 0.10,
                        cryptonite,
-                       digest >= 0.0,
                        http-types >= 0.9,
                        proto-lens-protoc,
-                       scientific >= 0.3,
-                       text >= 1.2,
-                       transformers,
-                       unordered-containers >= 0.2,
                        wai >= 3.2
   default-language:    Haskell2010
 

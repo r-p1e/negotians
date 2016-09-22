@@ -5,7 +5,6 @@ module App where
 import           Crypto.Hash               (Digest, MD5, digestFromByteString,
                                             hash)
 import           Data.ByteString           (ByteString)
-import           Data.Internal             (Token)
 import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
                                             hAuthorization, parseMethod)
 import           Network.HTTP.Types.Status (accepted202, status200, status400,
@@ -16,6 +15,8 @@ import           Network.Wai               (Application, Request, Response,
                                             requestHeaders, requestMethod,
                                             responseLBS)
 
+
+type Token = ByteString
 
 app :: Application
 app request respond =
