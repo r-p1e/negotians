@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package forvaret;
+
+message EventLog {
+    Severity severity = 1;
+    double timestamp = 2;
+    string msg = 3;
+    string source = 4;
+}
+
+enum Severity {
+    INFO = 0;
+    ERROR = 1;
+    DEBUG = 2;
+}
+
+message EventLogs {
+    repeated EventLog entities = 1;
+}
