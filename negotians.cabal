@@ -1,52 +1,53 @@
-name:                forvaret
+name:                negotians
 version:             0.1.0.0
 synopsis:            Initial project template from stack
 description:         Please see README.md
-homepage:            https://github.com/githubuser/forvaret#readme
+homepage:            https://github.com/githubuser/negotians#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
+author:              Danil
 maintainer:          example@example.com
 copyright:           2016 Author name here
 category:            Web
-build-type:          Simple
--- extra-source-files:
+build-type:          Custom
+extra-source-files:  proto-src/EventLog.proto
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  other-modules:       Data.Internal
+  other-modules:       Proto.EventLog
   exposed-modules:     App
-  build-depends:       aeson >= 0.11,
+  build-depends:       
                        base >= 4.7 && < 5,
                        bytestring >= 0.10,
-                       digest >= 0.0,
+                       cryptonite,
                        http-types >= 0.9,
-                       scientific >= 0.3,
-                       text >= 1.2,
-                       unordered-containers >= 0.2,
+                       proto-lens-protoc,
                        wai >= 3.2
   default-language:    Haskell2010
 
-executable forvaret-exe
+executable negotians-exe
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
-                     , forvaret
+                     , negotians
                      , wai >= 3.2
                      , warp >= 3.2
   default-language:    Haskell2010
 
-test-suite forvaret-test
+test-suite negotians-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
-                     , forvaret
+                     , hspec
+                     , hspec-wai
+                     , negotians
+                     , warp
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/forvaret
+  location: https://github.com/githubuser/negotians

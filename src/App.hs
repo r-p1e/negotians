@@ -2,26 +2,21 @@
 
 module App where
 
-import           Data.Aeson           (Value (Number))
-import qualified Data.Aeson           as Aeson
-import           Data.ByteString.Lazy (ByteString)
-import           Data.Digest.CRC32    (CRC32 (..))
-import qualified Data.HashMap.Strict  as HashMap
-import           Data.Internal        (FRVTResponse (..), Token)
-import           Data.Maybe           (fromMaybe)
-import qualified Data.Scientific      as Scientific
-import qualified Data.Text            as Text
-import qualified Data.Text.Encoding   as Text
-import           Data.Word            (Word32)
-import           Network.HTTP.Types   (RequestHeaders, StdMethod (PUT),
-                                       accepted202, mkStatus, parseMethod,
-                                       status200, status400, status403,
-                                       status404, status405, status500, hAuthorization)
-import           Network.Wai          (Application, Request, Response,
-                                       lazyRequestBody, rawPathInfo,
-                                       requestHeaders, requestMethod,
-                                       responseLBS)
+import           Crypto.Hash               (Digest, MD5, digestFromByteString,
+                                            hash)
+import           Data.ByteString           (ByteString)
+import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
+                                            hAuthorization, parseMethod)
+import           Network.HTTP.Types.Status (accepted202, status200, status400,
+                                            status403, status404, status405,
+                                            status422)
+import           Network.Wai               (Application, Request, Response,
+                                            rawPathInfo, requestBody,
+                                            requestHeaders, requestMethod,
+                                            responseLBS)
 
+
+type Token = ByteString
 
 app :: Application
 app request respond =
@@ -37,86 +32,82 @@ honeypot =
         [("Content-Type", "text/plain")]
         "What are you doing here, man?"
 
+checkMethod :: Request -> Either Response ()
+checkMethod request =
+    case parseMethod (requestMethod request) of
+        Left err ->
+            Left
+                (responseLBS
+                     status400
+                     [("Content-Type", "plain/text")]
+                     "Unknown method")
+        Right mtd ->
+            case mtd of
+                PUT -> Right ()
+                _ ->
+                    Left
+                        (responseLBS
+                             status405
+                             [("Content-Type", "plain/text")]
+                             "Only PUT supported")
+
+checkAuth :: Request -> Either Response Token
+checkAuth request =
+    case tryToExtractToken (requestHeaders request) of
+        Left _err ->
+            Left
+                (responseLBS
+                     status403
+                     [("Content-Type", "plain/text")]
+                     "There is no authorization token")
+        Right res -> Right res
+
+extractCheckSum :: Request -> Either Response (Digest MD5)
+extractCheckSum request =
+    case tryToExtractContentMD5 (requestHeaders request) of
+        Left _ ->
+            Left
+                (responseLBS
+                     status422
+                     [("Content-Type", "plain/text")]
+                     "Content-MD5 header is required")
+        Right res -> Right res
+
+-- | Check that Content-MD5 and request body md5 hash is equal
+checkIntegrity :: Digest MD5 -> Digest MD5 -> Either Response Response
+checkIntegrity rbodymd5 contentmd5 =
+    case contentmd5 == rbodymd5 of
+        False ->
+            Left
+                (responseLBS
+                     status422
+                     [("Content-Type", "plain/text")]
+                     "Checksum Failed")
+        True ->
+            Right
+                (responseLBS
+                     accepted202
+                     [("Content-Type", "plain/text")]
+                     "Accepted")
 
 events :: Request -> IO Response
 events request =
-    case parseMethod (requestMethod request) of
-        Left err ->
-            return
-                (responseLBS
-                     status400
-                     [("Content-Type", "application/json")]
-                     (Aeson.encode
-                          FRVTResponse
-                          { body = "Can't parse method"
-                          }))
-        Right mtd ->
-            case mtd of
-                PUT ->
-                    case tryToExtractToken (requestHeaders request) of
-                        Left err ->
-                            return
-                                (responseLBS
-                                     status403
-                                     [("Content-Type", "application/json")]
-                                     (Aeson.encode
-                                          FRVTResponse
-                                          { body = "No token"
-                                          }))
-                        Right res ->
-                            lazyRequestBody request >>=
-                            \bdy ->
-                                 case parseEvent bdy of
-                                     Left err ->
-                                         return
-                                             (responseLBS
-                                                  status500
-                                                  [ ( "Content-Type"
-                                                    , "application/json")]
-                                                  (Aeson.encode
-                                                       FRVTResponse
-                                                       { body = "can't parse event"
-                                                       }))
-                                     Right event ->
-                                         if isNotIntegrity event
-                                             then return
-                                                      (responseLBS
-                                                           (mkStatus
-                                                                422
-                                                                "Unprocessable Entity")
-                                                           [ ( "Content-Type"
-                                                             , "application/json")]
-                                                           (Aeson.encode
-                                                                FRVTResponse
-                                                                { body = "Broken integrity"
-                                                                }))
-                                             else registerEvent
-                                                      res
-                                                      (eventEntity event) >>
-                                                  return
-                                                      (responseLBS
-                                                           accepted202
-                                                           [ ( "Content-Type"
-                                                             , "application/json")]
-                                                           (Aeson.encode
-                                                                FRVTResponse
-                                                                { body = "Event registered"
-                                                                }))
-                _ ->
-                    return
-                        (responseLBS
-                             status405
-                             [("Content-Type", "application/json")]
-                             (Aeson.encode
-                                  FRVTResponse
-                                  { body = "Support only PUT method yet."
-                                  }))
+    case checkAuth request of
+        Left err -> return err
+        Right token -> do
+            reqbody <- requestBody request
+            case (checkMethod request >> extractCheckSum request >>=
+                  checkIntegrity (calculateMD5 reqbody)) of
+                Left response -> return response
+                Right response ->
+                    registerEvent token reqbody >> return response
 
+calculateMD5 :: ByteString -> Digest MD5
+calculateMD5 = hash
 
 notFound :: Response
 notFound =
-    responseLBS status404 [("Content-Type", "text/plain")] "404 - Not Found"
-
+    responseLBS status404 [("Content-Type", "plain/text")] "Not Found - 404"
 
 tryToExtractToken :: RequestHeaders -> Either String Token
 tryToExtractToken [] = Left "no token"
@@ -125,24 +116,13 @@ tryToExtractToken ((header,token):xs) =
         then Right token
         else tryToExtractToken xs
 
-parseEvent :: ByteString -> Either String Aeson.Object
-parseEvent = Aeson.eitherDecode
-
-isNotIntegrity :: Aeson.Object -> Bool
-isNotIntegrity event =
-    case HashMap.lookup "crc" event of
-        Just (Number crcvalue) ->
-            case HashMap.lookup "entities" event of
-                Nothing -> True
-                Just entities ->
-                    case Scientific.toBoundedInteger crcvalue :: Maybe Word32 of
-                        Nothing -> True
-                        Just crcvalue' ->
-                            not (crc32 (Aeson.encode entities) == crcvalue')
-        _ -> True
-
-eventEntity :: Aeson.Object -> ByteString
-eventEntity = fromMaybe "" . Just . Aeson.encode <$> HashMap.lookup "entities"
+tryToExtractContentMD5 :: RequestHeaders -> Either String (Digest MD5)
+tryToExtractContentMD5 [] = Left "no Content-MD5 header"
+tryToExtractContentMD5 (("Content-MD5",checksum):_) =
+    case digestFromByteString checksum of
+        Nothing -> Left "broken MD5 hash"
+        Just digest -> Right digest
+tryToExtractContentMD5 (_:xs) = tryToExtractContentMD5 xs
 
 registerEvent :: Token -> ByteString -> IO ()
 registerEvent _ _ = return ()
