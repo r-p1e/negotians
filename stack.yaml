@@ -3,8 +3,8 @@ extra-package-dbs: []
 packages:
 - '.'
 extra-deps:
-- aeson-1.0.0.0
 - data-default-class-0.0.1
+- katip-0.3.0.0
 - proto-lens-0.1.0.2
 - proto-lens-protoc-0.1.0.2
 explicit-setup-deps:

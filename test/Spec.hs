@@ -1,16 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           App            (app)
+import           Katip          (LogEnv, initLogEnv)
 import           Test.Hspec     (Spec, describe, hspec, it)
 import           Test.Hspec.Wai (get, request, shouldRespondWith, with)
 
 main :: IO ()
-main = hspec spec
+main =
+    initLogEnv "negotians" "test" >>=
+    \le ->
+         hspec (spec le)
 
 
-spec :: Spec
-spec =
-    with (return app) $
+spec :: LogEnv -> Spec
+spec logEnv =
+    with (return (app logEnv)) $
     do describe "GET /" $
            do it "responds with 200" $ do get "/" `shouldRespondWith` 200
        describe "GET /notfound" $
