@@ -2,28 +2,60 @@
 
 module App where
 
+import           Control.Monad.IO.Class    (MonadIO (liftIO))
 import           Crypto.Hash               (Digest, MD5, digestFromByteString,
                                             hash)
 import           Data.ByteString           (ByteString)
+import           Data.Monoid               ((<>))
+import           Data.Text.Encoding        (decodeUtf8)
+import           Internal                  (LogMsg (..), describeHeader)
+import           Katip                     (KatipT, LogEnv,
+                                            Severity (ErrorS, WarningS), logMsg,
+                                            ls, runKatipT)
 import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
                                             hAuthorization, parseMethod)
 import           Network.HTTP.Types.Status (accepted202, status200, status400,
                                             status403, status404, status405,
                                             status422)
 import           Network.Wai               (Application, Request, Response,
-                                            rawPathInfo, requestBody,
-                                            requestHeaders, requestMethod,
-                                            responseLBS)
+                                            rawPathInfo, remoteHost,
+                                            requestBody, requestHeaders,
+                                            requestMethod, responseLBS)
+import           Network.Wai.Logger        (showSockAddr)
 
 
 type Token = ByteString
 
-app :: Application
-app request respond =
+app :: LogEnv -> Application
+app logEnv request respond =
     case rawPathInfo request of
-        "/" -> respond honeypot
-        "/events" -> events request >>= respond
-        _ -> respond notFound
+        "/" ->
+            runKatipT
+                logEnv
+                (logMsg
+                     "app"
+                     WarningS
+                     (ls
+                          LogMsg
+                          { who = showSockAddr (remoteHost request)
+                          , circumstances = decodeUtf8 $
+                            requestMethod request <> " " <> rawPathInfo request
+                          , what = "honeypot"
+                          })) >>
+            respond honeypot
+        "/events" -> runKatipT logEnv (events request) >>= respond
+        _ -> runKatipT
+                logEnv
+                (logMsg
+                     "app"
+                     ErrorS
+                     (ls
+                          LogMsg
+                          { who = showSockAddr (remoteHost request)
+                          , circumstances = decodeUtf8 $
+                            requestMethod request <> " " <> rawPathInfo request
+                          , what = "not found"
+                          })) >> respond notFound
 
 honeypot :: Response
 honeypot =
@@ -90,15 +122,36 @@ checkIntegrity rbodymd5 contentmd5 =
                      [("Content-Type", "plain/text")]
                      "Accepted")
 
-events :: Request -> IO Response
+events :: Request -> KatipT IO Response
 events request =
     case checkAuth request of
-        Left err -> return err
+        Left err ->
+            logMsg
+                "app"
+                ErrorS
+                (ls
+                     LogMsg
+                     { who = showSockAddr (remoteHost request)
+                     , circumstances = describeHeader $ requestHeaders request
+                     , what = "check authorization"
+                     }) >>
+            return err
         Right token -> do
-            reqbody <- requestBody request
+            reqbody <- liftIO $ requestBody request
             case (checkMethod request >> extractCheckSum request >>=
                   checkIntegrity (calculateMD5 reqbody)) of
-                Left response -> return response
+                Left response ->
+                    logMsg
+                        "app"
+                        ErrorS
+                        (ls
+                             LogMsg
+                             { who = showSockAddr (remoteHost request)
+                             , circumstances = describeHeader $
+                               requestHeaders request
+                             , what = "check method or other"
+                             }) >>
+                    return response
                 Right response ->
                     registerEvent token reqbody >> return response
 
@@ -107,7 +160,7 @@ calculateMD5 = hash
 
 notFound :: Response
 notFound =
-    responseLBS status404 [("Content-Type", "plain/text")] "Not Found - 404"
+    responseLBS status404 [("Content-Type", "plain/text")] "not found - 404"
 
 tryToExtractToken :: RequestHeaders -> Either String Token
 tryToExtractToken [] = Left "no token"
@@ -117,12 +170,12 @@ tryToExtractToken ((header,token):xs) =
         else tryToExtractToken xs
 
 tryToExtractContentMD5 :: RequestHeaders -> Either String (Digest MD5)
-tryToExtractContentMD5 [] = Left "no Content-MD5 header"
-tryToExtractContentMD5 (("Content-MD5",checksum):_) =
+tryToExtractContentMD5 [] = Left "no content-md5 header"
+tryToExtractContentMD5 (("content-md5",checksum):_) =
     case digestFromByteString checksum of
-        Nothing -> Left "broken MD5 hash"
+        Nothing -> Left "broken md5 hash"
         Just digest -> Right digest
 tryToExtractContentMD5 (_:xs) = tryToExtractContentMD5 xs
 
-registerEvent :: Token -> ByteString -> IO ()
+registerEvent :: Token -> ByteString -> KatipT IO ()
 registerEvent _ _ = return ()
