@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module App where
@@ -6,56 +8,34 @@ import           Control.Monad.IO.Class    (MonadIO (liftIO))
 import           Crypto.Hash               (Digest, MD5, digestFromByteString,
                                             hash)
 import           Data.ByteString           (ByteString)
-import           Data.Monoid               ((<>))
-import           Data.Text.Encoding        (decodeUtf8)
-import           Internal                  (LogMsg (..), describeHeader)
-import           Katip                     (KatipT, LogEnv,
-                                            Severity (ErrorS, WarningS), logMsg,
-                                            ls, runKatipT)
+import           Data.ProtoLens.Encoding   (decodeMessage)
+import           Internal                  (LogMsg (..), NtsConfig (..), Token,
+                                            describeHeader)
+import           Lens.Family2              ((^.))
 import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
                                             hAuthorization, parseMethod)
-import           Network.HTTP.Types.Status (accepted202, status200, status400,
-                                            status403, status404, status405,
-                                            status422)
+import           Network.HTTP.Types.Status (accepted202, mkStatus, status200,
+                                            status400, status403, status404,
+                                            status405, status422)
 import           Network.Wai               (Application, Request, Response,
                                             rawPathInfo, remoteHost,
                                             requestBody, requestHeaders,
                                             requestMethod, responseLBS)
-import           Network.Wai.Logger        (showSockAddr)
+import           Proto.EventLog            (EventLog, EventLogs, entities, msg,
+                                            severity, source, timestamp)
+import           WebApp                    (WebAppErr (..), runWebAppT)
 
 
-type Token = ByteString
 
-app :: LogEnv -> Application
-app logEnv request respond =
+app :: NtsConfig -> Application
+app cfg request respond =
     case rawPathInfo request of
         "/" ->
-            runKatipT
-                logEnv
-                (logMsg
-                     "app"
-                     WarningS
-                     (ls
-                          LogMsg
-                          { who = showSockAddr (remoteHost request)
-                          , circumstances = decodeUtf8 $
-                            requestMethod request <> " " <> rawPathInfo request
-                          , what = "honeypot"
-                          })) >>
             respond honeypot
-        "/events" -> runKatipT logEnv (events request) >>= respond
-        _ -> runKatipT
-                logEnv
-                (logMsg
-                     "app"
-                     ErrorS
-                     (ls
-                          LogMsg
-                          { who = showSockAddr (remoteHost request)
-                          , circumstances = decodeUtf8 $
-                            requestMethod request <> " " <> rawPathInfo request
-                          , what = "not found"
-                          })) >> respond notFound
+        "/events" ->
+            events cfg request >>= respond
+        _ ->
+            respond notFound
 
 honeypot :: Response
 honeypot =
@@ -122,38 +102,35 @@ checkIntegrity rbodymd5 contentmd5 =
                      [("Content-Type", "plain/text")]
                      "Accepted")
 
-events :: Request -> KatipT IO Response
-events request =
+events
+    :: NtsConfig -> Request -> IO Response
+events cfg request =
     case checkAuth request of
-        Left err ->
-            logMsg
-                "app"
-                ErrorS
-                (ls
-                     LogMsg
-                     { who = showSockAddr (remoteHost request)
-                     , circumstances = describeHeader $ requestHeaders request
-                     , what = "check authorization"
-                     }) >>
-            return err
+        Left err -> return err
         Right token -> do
             reqbody <- liftIO $ requestBody request
             case (checkMethod request >> extractCheckSum request >>=
                   checkIntegrity (calculateMD5 reqbody)) of
-                Left response ->
-                    logMsg
-                        "app"
-                        ErrorS
-                        (ls
-                             LogMsg
-                             { who = showSockAddr (remoteHost request)
-                             , circumstances = describeHeader $
-                               requestHeaders request
-                             , what = "check method or other"
-                             }) >>
-                    return response
+                Left response -> return response
                 Right response ->
-                    registerEvent token reqbody >> return response
+                    case decodeMessage reqbody :: Either String EventLogs of
+                        Left err ->
+                            return
+                                (responseLBS
+                                     status400
+                                     [("Content-Type", "plain/text")]
+                                     "Can't decode message")
+                        Right msg' ->
+                            mapM_
+                                (\entity ->
+                                      (output cfg)
+                                          token
+                                          (entity ^. timestamp)
+                                          (entity ^. severity)
+                                          (entity ^. source)
+                                          (entity ^. msg))
+                                (msg' ^. entities) >>
+                            return response
 
 calculateMD5 :: ByteString -> Digest MD5
 calculateMD5 = hash
@@ -176,6 +153,3 @@ tryToExtractContentMD5 (("content-md5",checksum):_) =
         Nothing -> Left "broken md5 hash"
         Just digest -> Right digest
 tryToExtractContentMD5 (_:xs) = tryToExtractContentMD5 xs
-
-registerEvent :: Token -> ByteString -> KatipT IO ()
-registerEvent _ _ = return ()

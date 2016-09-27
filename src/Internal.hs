@@ -1,16 +1,20 @@
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 
 module Internal where
 
 import           Data.Aeson                (ToJSON, encode)
+import           Data.ByteString           (ByteString)
 import           Data.CaseInsensitive      (original)
 import           Data.Monoid               ((<>))
 import           Data.String.Conv          (StringConv (..))
 import           Data.Text                 (Text)
+import           Data.Time                 (UTCTime)
 import           GHC.Generics              (Generic)
 import           Network.HTTP.Types.Header (RequestHeaders)
+import           Proto.EventLog            (Severity)
 
 import qualified Data.Text                 as Text
 import qualified Data.Text.Encoding        as Text
@@ -33,3 +37,12 @@ describeHeader =
     map
         (\(a,b) ->
               Text.decodeUtf8 (original a) <> ":" <> Text.decodeUtf8 b)
+
+
+type Token = ByteString
+type Source = Text
+type Msg = ByteString
+
+data NtsConfig = NtsConfig
+    { output :: Token -> Double -> Severity -> Source -> Msg -> IO ()
+    }
