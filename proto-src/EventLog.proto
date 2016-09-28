@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package forvaret;
+package negotians;
 
 message EventLog {
     Severity severity = 1;
     double timestamp = 2;
-    string msg = 3;
+    bytes msg = 3;
     string source = 4;
 }
 

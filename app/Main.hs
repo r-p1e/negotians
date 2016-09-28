@@ -2,15 +2,11 @@
 module Main where
 
 import           App                      (app)
-import           Katip                    (ColorStrategy (ColorIfTerminal),
-                                           Severity (DebugS), Verbosity (V3),
-                                           initLogEnv, mkHandleScribe,
-                                           registerScribe)
+import           Internal                 (NtsConfig (..))
 import           Network.Wai.Handler.Warp (run)
-import           System.IO                (stderr)
+import           Output                   (initOutput)
 
 main :: IO ()
 main = do
-    logEnv <- initLogEnv "negotians" "devel"
-    scribeHandle <- mkHandleScribe ColorIfTerminal stderr DebugS V3
-    run 3000 (app (registerScribe "stderr" scribeHandle logEnv))
+    outputFunc <- initOutput
+    run 3000 (app (NtsConfig outputFunc))

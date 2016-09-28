@@ -1,0 +1,15 @@
+
+syntax = "proto3";
+
+
+import "EventLog.proto";
+
+package negotians;
+
+message LogRep {
+        Severity severity = 1;
+        double timestamp = 2;
+        bytes msg = 3;
+        string source = 4;
+        bytes token = 5;
+}
