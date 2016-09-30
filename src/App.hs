@@ -5,25 +5,24 @@
 module App where
 
 import           Control.Monad.IO.Class    (MonadIO (liftIO))
-import           Crypto.Hash               (Digest, MD5, digestFromByteString,
-                                            hash)
+import           Crypto.Hash               (Digest, MD5, hash)
 import           Data.ByteString           (ByteString)
 import           Data.ProtoLens.Encoding   (decodeMessage)
-import           Internal                  (LogMsg (..), NtsConfig (..), Token,
-                                            describeHeader)
+import           Internal                  (NtsConfig (..), Token)
 import           Lens.Family2              ((^.))
 import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
                                             hAuthorization, parseMethod)
-import           Network.HTTP.Types.Status (accepted202, mkStatus, status200,
-                                            status400, status403, status404,
-                                            status405, status422)
+import           Network.HTTP.Types.Status (accepted202, status200, status400,
+                                            status403, status404, status405,
+                                            status422)
 import           Network.Wai               (Application, Request, Response,
-                                            rawPathInfo, remoteHost,
-                                            requestBody, requestHeaders,
-                                            requestMethod, responseLBS)
-import           Proto.EventLog            (EventLog, EventLogs, entities, msg,
-                                            severity, source, timestamp)
-import           WebApp                    (WebAppErr (..), runWebAppT)
+                                            rawPathInfo, requestBody,
+                                            requestHeaders, requestMethod,
+                                            responseLBS)
+import           Proto.EventLog            (EventLogs, entities, msg, severity,
+                                            source, timestamp)
+
+import qualified Data.ByteArray.Encoding   as B (Base (Base16), convertToBase)
 
 
 
@@ -74,7 +73,7 @@ checkAuth request =
                      "There is no authorization token")
         Right res -> Right res
 
-extractCheckSum :: Request -> Either Response (Digest MD5)
+extractCheckSum :: Request -> Either Response ByteString
 extractCheckSum request =
     case tryToExtractContentMD5 (requestHeaders request) of
         Left _ ->
@@ -86,7 +85,7 @@ extractCheckSum request =
         Right res -> Right res
 
 -- | Check that Content-MD5 and request body md5 hash is equal
-checkIntegrity :: Digest MD5 -> Digest MD5 -> Either Response Response
+checkIntegrity :: ByteString -> ByteString -> Either Response Response
 checkIntegrity rbodymd5 contentmd5 =
     case contentmd5 == rbodymd5 of
         False ->
@@ -132,8 +131,8 @@ events cfg request =
                                 (msg' ^. entities) >>
                             return response
 
-calculateMD5 :: ByteString -> Digest MD5
-calculateMD5 = hash
+calculateMD5 :: ByteString -> ByteString
+calculateMD5 value = B.convertToBase B.Base16 (hash value :: Digest MD5)
 
 notFound :: Response
 notFound =
@@ -146,10 +145,7 @@ tryToExtractToken ((header,token):xs) =
         then Right token
         else tryToExtractToken xs
 
-tryToExtractContentMD5 :: RequestHeaders -> Either String (Digest MD5)
+tryToExtractContentMD5 :: RequestHeaders -> Either String ByteString
 tryToExtractContentMD5 [] = Left "no content-md5 header"
-tryToExtractContentMD5 (("content-md5",checksum):_) =
-    case digestFromByteString checksum of
-        Nothing -> Left "broken md5 hash"
-        Just digest -> Right digest
+tryToExtractContentMD5 (("content-md5",checksum):_) = Right checksum
 tryToExtractContentMD5 (_:xs) = tryToExtractContentMD5 xs

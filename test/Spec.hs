@@ -1,20 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           App            (app)
-import           Katip          (LogEnv, initLogEnv)
+import           Internal       (NtsConfig (..))
 import           Test.Hspec     (Spec, describe, hspec, it)
 import           Test.Hspec.Wai (get, request, shouldRespondWith, with)
 
 main :: IO ()
-main =
-    initLogEnv "negotians" "test" >>=
-    \le ->
-         hspec (spec le)
+main = hspec spec
+
+outputMock _ _ _ _ _ = return ()
 
 
-spec :: LogEnv -> Spec
-spec logEnv =
-    with (return (app logEnv)) $
+spec :: Spec
+spec =
+    with (return (app (NtsConfig outputMock))) $
     do describe "GET /" $
            do it "responds with 200" $ do get "/" `shouldRespondWith` 200
        describe "GET /notfound" $
@@ -46,7 +45,6 @@ spec logEnv =
                   do (request
                           "PUT"
                           "/events"
-                          [ ("Authorization", "wow123")
-                          , ("Content-MD5", "78b9d09661da64f0bc6c146c524bae4a")]
+                          [("Authorization", "wow123"), ("Content-MD5", "78b9d09661da64f0bc6c146c524bae4a")]
                           "somebody") `shouldRespondWith`
-                         202
+                         400
