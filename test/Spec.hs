@@ -1,9 +1,18 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-import           App            (app)
-import           Internal       (NtsConfig (..))
-import           Test.Hspec     (Spec, describe, hspec, it)
-import           Test.Hspec.Wai (get, request, shouldRespondWith, with)
+import           App                  (app, calculateMD5)
+import           Data.Binary.Builder  (toLazyByteString)
+import           Data.ByteString.Lazy (fromStrict, toStrict)
+import           Data.ProtoLens       (buildMessage, def)
+import           Internal             (NtsConfig (..))
+import           Lens.Family2         ((&), (.~))
+import           Proto.EventLog       (EventLog, EventLogs, Severity (INFO),
+                                       entities, msg, severity, source,
+                                       timestamp)
+import           Test.Hspec           (Spec, describe, hspec, it)
+import           Test.Hspec.Wai       (get, request, shouldRespondWith, with)
+
 
 main :: IO ()
 main = hspec spec
@@ -14,9 +23,7 @@ outputMock _ _ _ _ _ = return ()
 spec :: Spec
 spec =
     with (return (app (NtsConfig outputMock))) $
-    do describe "GET /" $
-           do it "responds with 200" $ do get "/" `shouldRespondWith` 200
-       describe "GET /notfound" $
+    do describe "GET /notfound" $
            do it "responds with 404" $
                   do get "/notfound" `shouldRespondWith` 404
        describe "GET /events" $
@@ -41,10 +48,28 @@ spec =
                           [("Authorization", "wow123"), ("Content-MD5", "0")]
                           "somebody") `shouldRespondWith`
                          422
-              it "responds with 202" $
+              it "responds with 400" $
                   do (request
                           "PUT"
                           "/events"
-                          [("Authorization", "wow123"), ("Content-MD5", "78b9d09661da64f0bc6c146c524bae4a")]
+                          [ ("Authorization", "wow123")
+                          , ("Content-MD5", "78b9d09661da64f0bc6c146c524bae4a")]
                           "somebody") `shouldRespondWith`
                          400
+              it "responds with 202" $
+                  do let rmsg :: EventLog =
+                             ((((def & severity .~ INFO) & timestamp .~ 0) &
+                               msg .~
+                               "some example text") &
+                              source .~
+                              "test")
+                         body :: EventLogs = (def & entities .~ [rmsg])
+                         rbody = toLazyByteString (buildMessage body)
+                     (request
+                          "PUT"
+                          "/events"
+                          [ ("Authorization", "wow123")
+                          , ("Content-MD5", (calculateMD5 (toStrict rbody)))
+                          , ("Content-Type", "application/x-protobuf")]
+                          rbody) `shouldRespondWith`
+                         202

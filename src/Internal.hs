@@ -40,7 +40,7 @@ describeHeader =
 
 type Token = ByteString
 type Source = Text
-type Msg = ByteString
+type Msg = Text
 
 data NtsConfig = NtsConfig
     { output :: Token -> Double -> Severity -> Source -> Msg -> IO ()

@@ -4,25 +4,26 @@
 
 module App where
 
-import           Control.Monad.IO.Class    (MonadIO (liftIO))
-import           Crypto.Hash               (Digest, MD5, hash)
-import           Data.ByteString           (ByteString)
-import           Data.ProtoLens.Encoding   (decodeMessage)
-import           Internal                  (NtsConfig (..), Token)
-import           Lens.Family2              ((^.))
-import           Network.HTTP.Types        (RequestHeaders, StdMethod (PUT),
-                                            hAuthorization, parseMethod)
-import           Network.HTTP.Types.Status (accepted202, status200, status400,
-                                            status403, status404, status405,
-                                            status422)
-import           Network.Wai               (Application, Request, Response,
-                                            rawPathInfo, requestBody,
-                                            requestHeaders, requestMethod,
-                                            responseLBS)
-import           Proto.EventLog            (EventLogs, entities, msg, severity,
-                                            source, timestamp)
+import           Control.Monad.IO.Class     (MonadIO (liftIO))
+import           Crypto.Hash                (Digest, MD5, hash)
+import           Data.ByteString            (ByteString)
+import           Data.ProtoLens.Encoding    (decodeMessage)
+import           Internal                   (NtsConfig (..), Token)
+import           Lens.Family2               ((^.))
+import           Network.HTTP.Types         (RequestHeaders, StdMethod (PUT),
+                                             hAuthorization, parseMethod)
+import           Network.HTTP.Types.Status  (accepted202, status200, status400,
+                                             status403, status404, status405,
+                                             status422)
+import           Network.Wai                (Application, Request, Response,
+                                             rawPathInfo, requestBody,
+                                             requestHeaders, requestMethod,
+                                             responseLBS)
+import           Proto.EventLog             (EventLogs, entities, msg, severity,
+                                             source, timestamp)
 
-import qualified Data.ByteArray.Encoding   as B (Base (Base16), convertToBase)
+import qualified Data.ByteArray.Encoding    as B (Base (Base16), convertToBase)
+import qualified Data.ByteString.Lazy.Char8 as BSLC8 (pack)
 
 
 
@@ -118,7 +119,7 @@ events cfg request =
                                 (responseLBS
                                      status400
                                      [("Content-Type", "plain/text")]
-                                     "Can't decode message")
+                                     (BSLC8.pack err))
                         Right msg' ->
                             mapM_
                                 (\entity ->
