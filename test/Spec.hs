@@ -1,17 +1,20 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-import           App                  (app, calculateMD5)
-import           Data.Binary.Builder  (toLazyByteString)
-import           Data.ByteString.Lazy (fromStrict, toStrict)
-import           Data.ProtoLens       (buildMessage, def)
-import           Internal             (NtsConfig (..))
-import           Lens.Family2         ((&), (.~))
-import           Proto.EventLog       (EventLog, EventLogs, Severity (INFO),
-                                       entities, msg, severity, source,
-                                       timestamp)
-import           Test.Hspec           (Spec, describe, hspec, it)
-import           Test.Hspec.Wai       (get, request, shouldRespondWith, with)
+import           App                       (app, calculateMD5)
+import           Data.Binary.Builder       (toLazyByteString)
+import           Data.ByteString.Lazy      (toStrict)
+import           Data.ProtoLens            (buildMessage, def)
+import           Data.ProtoLens.Arbitrary  (ArbitraryMessage (..))
+import           Internal                  (NtsConfig (..))
+import           Lens.Family2              ((&), (.~))
+import           Proto.EventLog            (EventLog, EventLogs,
+                                            Severity (INFO), entities, msg,
+                                            severity, source, timestamp)
+import           Test.Hspec                (Spec, describe, hspec, it)
+import           Test.Hspec.Wai            (get, request, shouldRespondWith,
+                                            with)
+import           Test.Hspec.Wai.QuickCheck (property)
 
 
 main :: IO ()
@@ -73,3 +76,19 @@ spec =
                           , ("Content-Type", "application/x-protobuf")]
                           rbody) `shouldRespondWith`
                          202
+              it "respond with 202" $
+                  property $
+                  \(eventlog :: ArbitraryMessage EventLog) ->
+                       (let body =
+                                toLazyByteString
+                                    (buildMessage
+                                         (def & entities .~
+                                          [unArbitraryMessage eventlog] :: EventLogs))
+                        in request
+                               "PUT"
+                               "/events"
+                               [ ("Authorization", "quickchecktoken")
+                               , ("Content-MD5", (calculateMD5 (toStrict body)))
+                               , ("Content-Type", "application/x-protobuf")]
+                               body) `shouldRespondWith`
+                       202
