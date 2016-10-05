@@ -3,7 +3,7 @@ deploy:
   provider: releases
   api_key:
     secure: jE2X7FcfbZwSBdNRQpHVRC8y92MhseEFCfGno0xE8C6F1vVrtr/gTs4u3jeHfwr1O+26lmDWi3RfL3FksVBv/J4al9jzHUFS78FuvtfKRUly75WsfZicFyDDesRnjoSPVIFD8ZjIirjmcScTAr0qq7AcOCEdBHSMoBqbUYnoY9oSG3P3kULlkJdpTEyvNYW0LKmerl/V4FH98Qv3Qs08pDo0bjGkdLf7P9KsTo4jS0/9ERJbsc0oCwUkAecxn9QDVDQRh2ehg9w2GhjqD3s4jFC+8wFuhBVh5dBKH0x+OEMuHnWiQG0shkj9U3RRLrRr+tJbjLO2vuuduFxbYKcc6U7H/EP5N5YzeWYjqZqY5OplswPrjaJeMWR2pk5ol34OnDWTkB0R6V67gjxsxpS6159XG/hvjNMooqDTpKQfoPIDF2y9IN/0CVDIKGV+5QhmZD5x2XBIZTdFwIBkpRDG0jXaMvN/UEySMFo8i4uZxPzHBYuwGJaendg4wDCQfQl7vQYACPPFEuRNY6qoj3flmyRk0pbrRsBhuP602E9c+EADYUUUAHy+yYTCOGjq3CTx5d7nZDeGMJkDhUz7Yd3OrFCTSJX3Mvw59FMlXNiNyc13cwaThaxtD7PKxe4Lkyg0GDfcSGCGJ5Cw2pNlaUsuVgc1ypvF7X/SchBi9wYKG6o=
-  file: "~/.local/bin/negotians-exe"
+  file: "/home/travis/.local/bin/negotians-exe"
   on:
     repo: r-p1e/negotians
 cache:
