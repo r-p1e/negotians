@@ -1,5 +1,7 @@
 language: haskell
 
+ghc: 8.0
+
 deploy:
   on:
     repo: r-p1e/negotians
