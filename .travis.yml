@@ -14,9 +14,9 @@ addons:
     sources:
       - hvr-ghc
     packages:
-      - libgmp-dev
       - cabal-install-head
       - ghc-7.10.3
+      - unzip
 
 before_install:
   - mkdir -p ~/.local/bin
