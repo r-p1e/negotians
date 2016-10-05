@@ -1,32 +1,30 @@
 language: c
-
 deploy:
+  provider: releases
+  api_key:
+    secure: jE2X7FcfbZwSBdNRQpHVRC8y92MhseEFCfGno0xE8C6F1vVrtr/gTs4u3jeHfwr1O+26lmDWi3RfL3FksVBv/J4al9jzHUFS78FuvtfKRUly75WsfZicFyDDesRnjoSPVIFD8ZjIirjmcScTAr0qq7AcOCEdBHSMoBqbUYnoY9oSG3P3kULlkJdpTEyvNYW0LKmerl/V4FH98Qv3Qs08pDo0bjGkdLf7P9KsTo4jS0/9ERJbsc0oCwUkAecxn9QDVDQRh2ehg9w2GhjqD3s4jFC+8wFuhBVh5dBKH0x+OEMuHnWiQG0shkj9U3RRLrRr+tJbjLO2vuuduFxbYKcc6U7H/EP5N5YzeWYjqZqY5OplswPrjaJeMWR2pk5ol34OnDWTkB0R6V67gjxsxpS6159XG/hvjNMooqDTpKQfoPIDF2y9IN/0CVDIKGV+5QhmZD5x2XBIZTdFwIBkpRDG0jXaMvN/UEySMFo8i4uZxPzHBYuwGJaendg4wDCQfQl7vQYACPPFEuRNY6qoj3flmyRk0pbrRsBhuP602E9c+EADYUUUAHy+yYTCOGjq3CTx5d7nZDeGMJkDhUz7Yd3OrFCTSJX3Mvw59FMlXNiNyc13cwaThaxtD7PKxe4Lkyg0GDfcSGCGJ5Cw2pNlaUsuVgc1ypvF7X/SchBi9wYKG6o=
+  file: "~/.local/bin/negotians-exe"
   on:
     repo: r-p1e/negotians
-    branch: master
-
 cache:
   directories:
-    - $HOME/.stack/
-
+  - "$HOME/.stack/"
 addons:
   apt:
     sources:
-      - hvr-ghc
+    - hvr-ghc
     packages:
-      - cabal-install-head
-      - ghc-7.10.3
-      - unzip
-
+    - cabal-install-head
+    - ghc-7.10.3
+    - unzip
 before_install:
-  - mkdir -p ~/.local/bin
-  - export PATH=$HOME/.local/bin:$PATH
-  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-  - bash install_protoc_from_source.sh
-
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards
+  --strip-components=1 -C ~/.local/bin '*/stack'
+- bash install_protoc_from_source.sh
 install:
-  - stack --no-terminal --skip-ghc-check setup
-  - stack build --no-terminal --skip-ghc-check --only-snapshot
-
+- stack --no-terminal --skip-ghc-check setup
+- stack build --no-terminal --skip-ghc-check --only-snapshot
 script:
-  - stack --no-terminal --skip-ghc-check test
+- stack --no-terminal --skip-ghc-check test
