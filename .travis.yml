@@ -26,5 +26,6 @@ before_install:
 install:
 - stack --no-terminal --skip-ghc-check setup
 - stack build --no-terminal --skip-ghc-check --only-snapshot
+- stack install --no-terminal
 script:
 - stack --no-terminal --skip-ghc-check test
