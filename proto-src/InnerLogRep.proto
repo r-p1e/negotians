@@ -9,7 +9,7 @@ package negotians;
 message LogRep {
         Severity severity = 1;
         double timestamp = 2;
-        bytes msg = 3;
+        string msg = 3;
         string source = 4;
         bytes token = 5;
 }

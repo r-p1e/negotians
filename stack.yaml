@@ -3,10 +3,15 @@ extra-package-dbs: []
 packages:
 - '.'
 extra-deps:
+- aeson-1.0.1.0
+- data-default-0.6.0
 - data-default-class-0.0.1
-- katip-0.3.0.0
+- data-default-instances-base-0.1.0
+- fast-logger-2.4.7
 - proto-lens-0.1.0.2
+- proto-lens-arbitrary-0.1.0.1
 - proto-lens-protoc-0.1.0.2
+- wai-extra-3.0.18
 explicit-setup-deps:
   ! '*': true
 resolver: lts-7.0

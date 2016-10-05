@@ -11,7 +11,6 @@ import           Data.CaseInsensitive      (original)
 import           Data.Monoid               ((<>))
 import           Data.String.Conv          (StringConv (..))
 import           Data.Text                 (Text)
-import           Data.Time                 (UTCTime)
 import           GHC.Generics              (Generic)
 import           Network.HTTP.Types.Header (RequestHeaders)
 import           Proto.EventLog            (Severity)
@@ -41,7 +40,7 @@ describeHeader =
 
 type Token = ByteString
 type Source = Text
-type Msg = ByteString
+type Msg = Text
 
 data NtsConfig = NtsConfig
     { output :: Token -> Double -> Severity -> Source -> Msg -> IO ()
