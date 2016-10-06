@@ -6,6 +6,7 @@ deploy:
   file: "/home/travis/.local/bin/negotians-exe"
   on:
     repo: r-p1e/negotians
+    tags: true
 cache:
   directories:
   - "$HOME/.stack/"
