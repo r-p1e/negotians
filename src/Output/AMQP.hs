@@ -26,15 +26,16 @@ import           Proto.EventLog                 (Severity)
 import           Proto.InnerLogRep              (LogRep, msg, severity, source,
                                                  timestamp, token)
 import           System.IO                      (hPrint, stderr)
+import Data.Text (Text)
 
 
 data RMQMessage = RMQMessage ByteString | RMQStop
 
 initAMQP
-    :: IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
-initAMQP = do
+    :: Text -> Text -> IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
+initAMQP username pwd = do
          queue <- newTBQueueIO tBQueueLen
-         _ <- forkIO (rmqWriter queue)
+         _ <- forkIO (rmqWriter queue username pwd)
          return (publish queue)
 
 publish
@@ -61,8 +62,8 @@ encodeLogRep tkn timemp svrty src message =
 tBQueueLen :: Int
 tBQueueLen = 1000
 
-rmqWriter :: TBQueue RMQMessage -> IO ()
-rmqWriter queue = do
+rmqWriter :: TBQueue RMQMessage -> Text -> Text -> IO ()
+rmqWriter queue username pwd = do
     conn <-
         recovering
             (exponentialBackoff 50)
@@ -75,8 +76,8 @@ rmqWriter queue = do
                   AMQP.openConnection
                       "rabbitmq.service.consul"
                       "/"
-                      "guest"
-                      "guest")
+                      username
+                      pwd)
     chan <- AMQP.openChannel conn
     AMQP.declareExchange
         chan
@@ -124,5 +125,5 @@ rmqWriter queue = do
                        return ()))
             (\(e :: AMQPException) ->
                   case e of
-                      ConnectionClosedException _ -> rmqWriter queue
-                      ChannelClosedException _ -> rmqWriter queue)
+                      ConnectionClosedException _ -> rmqWriter queue username pwd
+                      ChannelClosedException _ -> rmqWriter queue username pwd)
