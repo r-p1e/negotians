@@ -4,11 +4,11 @@ module Output
     ) where
 
 import Data.Text (Text)
-import           Internal       (Msg, Source, Token)
-import           Output.AMQP    (initAMQP)
-import           Proto.EventLog (Severity)
+import Internal (Msg, Source, Token)
+import Output.GooglePubSub (initGPS)
+import Proto.EventLog (Severity)
 
 
 initOutput
-    :: Text -> Text -> IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
-initOutput = initAMQP
+    :: IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
+initOutput = initGPS
