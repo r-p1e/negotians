@@ -21,6 +21,7 @@ library
                      , App
                      , Internal
                      , Output
+                     , Output.GooglePubSub
   build-depends:       aeson >= 0.11,
                        amqp,
                        base >= 4.7 && < 5,
@@ -28,7 +29,11 @@ library
                        bytestring >= 0.10,
                        case-insensitive >= 1.2,
                        cryptonite,
+                       exceptions >= 0.8,
+                       gogol >= 0.1,
+                       gogol-pubsub >= 0.1,
                        http-types >= 0.9,
+                       lens >= 4.14,
                        lens-family >= 1.2,
                        memory >= 0.13,
                        mtl,
