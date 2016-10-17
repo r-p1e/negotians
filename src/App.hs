@@ -4,26 +4,33 @@
 
 module App where
 
-import           Control.Monad.IO.Class     (MonadIO (liftIO))
-import           Crypto.Hash                (Digest, MD5, hash)
-import           Data.ByteString            (ByteString)
-import           Data.ProtoLens.Encoding    (decodeMessage)
-import           Internal                   (NtsConfig (..), Token)
-import           Lens.Family2               ((^.))
-import           Network.HTTP.Types         (RequestHeaders, StdMethod (PUT),
-                                             hAuthorization, parseMethod)
-import           Network.HTTP.Types.Status  (accepted202, status200, status400,
-                                             status403, status404, status405,
-                                             status422)
-import           Network.Wai                (Application, Request, Response,
-                                             rawPathInfo, requestBody,
-                                             requestHeaders, requestMethod,
-                                             responseLBS)
-import           Proto.EventLog             (EventLogs, entities, msg, severity,
-                                             source, timestamp)
+import Data.Maybe (fromMaybe)
+import Control.Applicative ((<|>))
+import Control.Monad.IO.Class (MonadIO(liftIO))
+import Crypto.Hash (Digest, MD5, hash)
+import Data.ByteString (ByteString)
+import Data.ProtoLens (def)
+import Data.ProtoLens.Encoding (decodeMessage)
+import Internal (NtsConfig(..), Token)
+import Control.Lens ((^.), (&), (.~), (^?))
+import Network.HTTP.Types
+       (RequestHeaders, StdMethod(PUT), hAuthorization, parseMethod)
+import Network.HTTP.Types.Status
+       (accepted202, status200, status400, status403, status404,
+        status405, status422)
+import Network.Wai
+       (Application, Request, Response, rawPathInfo, requestBody,
+        requestHeaders, requestMethod, responseLBS)
+import Proto.EventLog (EventLogs)
+import Proto.CommonLogRep (LogEntry)
 
-import qualified Data.ByteArray.Encoding    as B (Base (Base16), convertToBase)
+import qualified Proto.EventLog as EventLog
+import qualified Proto.CommonLogRep as CommonLogRep
+import qualified Data.ByteArray.Encoding as B
+       (Base(Base16), convertToBase)
 import qualified Data.ByteString.Lazy.Char8 as BSLC8 (pack)
+import qualified Data.Map.Strict as Map
+import qualified Data.Text.Encoding as Text
 
 
 
@@ -123,14 +130,42 @@ events cfg request =
                         Right msg' ->
                             mapM_
                                 (\entity ->
-                                      (output cfg)
-                                          token
-                                          (entity ^. timestamp)
-                                          (entity ^. severity)
-                                          (entity ^. source)
-                                          (entity ^. msg))
-                                (msg' ^. entities) >>
+                                      (output cfg) entity)
+                                (localiso token msg') >>
                             return response
+
+
+localiso :: Token -> EventLogs -> [LogEntry]
+localiso token eventlogs =
+    map
+        (\entry ->
+              ((((((((def & CommonLogRep.jsonpayload .~
+                      (fromMaybe def (entry ^? CommonLogRep.jsonpayload))) &
+                     CommonLogRep.operation .~
+                     (fromMaybe def (entry ^? CommonLogRep.operation))) &
+                    CommonLogRep.labels .~
+                    (fromMaybe
+                         labels'
+                         (Map.union labels' <$> (entry ^? CommonLogRep.labels)))) &
+                   CommonLogRep.httprequest .~
+                   (fromMaybe def (entry ^? CommonLogRep.httprequest))) &
+                  CommonLogRep.severity .~
+                  (fromMaybe def (entry ^? CommonLogRep.severity))) &
+                 CommonLogRep.timestamp .~
+                 (fromMaybe def (entry ^? CommonLogRep.timestamp))) &
+                CommonLogRep.resource .~
+                (fromMaybe def (entry ^? EventLog.resource <|> resource'))) &
+               CommonLogRep.logname .~
+               (fromMaybe "" (entry ^? EventLog.logname <|> logname'))))
+        (eventlogs ^. EventLog.entries)
+  where
+    logname' = eventlogs ^? EventLog.logname
+    resource' = eventlogs ^? EventLog.resource
+    labels' =
+        case eventlogs ^? EventLog.labels of
+            Nothing -> Map.singleton "token" (Text.decodeUtf8 token)
+            Just m -> Map.insert "token" (Text.decodeUtf8 token) m
+
 
 calculateMD5 :: ByteString -> ByteString
 calculateMD5 value = B.convertToBase B.Base16 (hash value :: Digest MD5)

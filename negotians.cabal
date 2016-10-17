@@ -6,8 +6,8 @@ homepage:            https://github.com/githubuser/negotians#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Danil
-maintainer:          example@example.com
-copyright:           2016 Author name here
+maintainer:          dpetrov@cyl.com
+copyright:           2016 Danil Petrov
 category:            Web
 build-type:          Custom
 extra-source-files:  dschemas/proto-src/*.proto
@@ -16,11 +16,13 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Proto.EventLog
-                     , Proto.InnerLogRep
-                     , Output.AMQP
+                     , Proto.CommonLogRep
+                     , Proto.Timestamp
+                     , Proto.Struct
                      , App
                      , Internal
                      , Output
+                     , Output.AMQP
                      , Output.GooglePubSub
   build-depends:       aeson >= 0.11,
                        amqp,
@@ -28,6 +30,7 @@ library
                        binary >= 0.8,
                        bytestring >= 0.10,
                        case-insensitive >= 1.2,
+                       containers >= 0.5,
                        cryptonite,
                        exceptions >= 0.8,
                        gogol >= 0.1,

@@ -22,11 +22,11 @@ import Network.Google.PubSub
         projectsTopicsPublish, pubSubScope, publishRequest, pubsubMessage,
         tName, topic)
 import Output.AMQP (AMQPMessage(..), BatchQueue, initAMQP)
-import Proto.EventLog (Severity)
+import Proto.CommonLogRep (LogEntry)
 import System.IO (stdout)
 
 
-initGPS :: IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
+initGPS :: IO (LogEntry -> IO ())
 initGPS = initAMQP gpsWriter
 
 gpsWriter :: BatchQueue -> IO ()
