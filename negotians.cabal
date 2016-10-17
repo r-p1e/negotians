@@ -10,7 +10,7 @@ maintainer:          example@example.com
 copyright:           2016 Author name here
 category:            Web
 build-type:          Custom
-extra-source-files:  proto-src/*.proto
+extra-source-files:  dschemas/proto-src/*.proto
 cabal-version:       >=1.10
 
 library
