@@ -13,7 +13,6 @@ import           Control.Retry                  (defaultLogMsg,
                                                  recovering)
 import           Data.ByteString.Lazy           (toStrict)
 import           Data.Text                      (Text)
-import           Internal                       (Msg, Source, Token)
 import Network.Google
        (Error(..), HasEnv(..), LogLevel(..), newEnv, newLogger, runGoogle,
         runResourceT, send)
