@@ -10,8 +10,8 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 import Crypto.Hash (Digest, MD5, hash)
 import Data.ByteString (ByteString)
 import Data.ProtoLens (def)
-import Data.ProtoLens.Encoding (decodeMessage)
-import Internal (NtsConfig(..), Token)
+import Data.ProtoLens.Encoding (decodeMessage, encodeMessage)
+import Internal (Token)
 import Control.Lens ((^.), (&), (.~), (^?))
 import Network.HTTP.Types
        (RequestHeaders, StdMethod(PUT), hAuthorization, parseMethod)
@@ -23,6 +23,8 @@ import Network.Wai
         requestHeaders, requestMethod, responseLBS)
 import Proto.EventLog (EventLogs)
 import Proto.CommonLogRep (LogEntry)
+import Control.Monad.Log (Handler)
+import Network.Google.PubSub (PubsubMessage, pubsubMessage, pmData)
 
 import qualified Proto.EventLog as EventLog
 import qualified Proto.CommonLogRep as CommonLogRep
@@ -34,13 +36,13 @@ import qualified Data.Text.Encoding as Text
 
 
 
-app :: NtsConfig -> Application
-app cfg request respond =
+app :: Handler IO PubsubMessage -> Application
+app pubsub request respond =
     case rawPathInfo request of
         "/" ->
             respond honeypot
         "/events" ->
-            events cfg request >>= respond
+            events pubsub request >>= respond
         _ ->
             respond notFound
 
@@ -110,8 +112,8 @@ checkIntegrity rbodymd5 contentmd5 =
                      "Accepted")
 
 events
-    :: NtsConfig -> Request -> IO Response
-events cfg request =
+    :: Handler IO PubsubMessage -> Request -> IO Response
+events pubsub request =
     case checkAuth request of
         Left err -> return err
         Right token -> do
@@ -130,7 +132,9 @@ events cfg request =
                         Right msg' ->
                             mapM_
                                 (\entity ->
-                                      (output cfg) entity)
+                                      (pubsub
+                                           (pubsubMessage & pmData .~
+                                            Just (encodeMessage entity))))
                                 (localiso token msg') >>
                             return response
 

@@ -1,5 +1,5 @@
 name:                negotians
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Initial project template from stack
 description:         Please see README.md
 homepage:            https://github.com/githubuser/negotians#readme
@@ -38,6 +38,7 @@ library
                        http-types >= 0.9,
                        lens >= 4.14,
                        lens-family >= 1.2,
+                       logging-effect >= 1.1,
                        memory >= 0.13,
                        mtl,
                        proto-lens,
@@ -66,6 +67,7 @@ executable negotians-exe
                      , warp >= 3.2
                      , gogol >= 0.1
                      , gogol-logging >= 0.1
+                     , gogol-pubsub >= 0.1
                      , logging-effect >= 1.1
                      , unordered-containers >= 0.2
                      , logging-effect-google >= 0.1
