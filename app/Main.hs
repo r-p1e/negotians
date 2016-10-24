@@ -35,6 +35,7 @@ data Args = Args
     { projectid :: Text <?> "Project ID, used in log name"
     , instanceid :: Text <?> "Instance ID"
     , zone :: Text <?> "zone where instance located"
+    , topic :: Text <?> "PubSub topic name"
     } deriving (Generic)
 
 instance ParseRecord Args
@@ -53,7 +54,7 @@ main = do
          , flushMaxQueueSize = 128
          })
         env
-        "logs" $
+        (unHelpful (topic args)) $
         \pubsub ->
              withGoogleLoggingHandler
                  (defaultBatchingOptions
