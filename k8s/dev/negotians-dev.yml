@@ -1,0 +1,29 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: negotians-dev
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: negotians
+      labels:
+        app: negotians
+        env: dev
+    spec:
+      containers:
+        - name: negotians
+          image: gcr.io/pinacta-147615/negotians:latest
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "500Mi"
+              cpu: "100m"
+          ports:
+            - name: negotians
+              containerPort: 3000
+          command: ["negotians", "--env=$(ENV)"]
+          env:
+            - name: ENV
+              value: "debug"
+

@@ -22,3 +22,8 @@ extra-deps:
 explicit-setup-deps:
   ! '*': true
 resolver: lts-7.0
+
+image:
+  container:
+    name: pinacta/negotians
+    base: fpco/stack-run
