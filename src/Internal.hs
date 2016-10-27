@@ -13,7 +13,7 @@ import           Data.String.Conv          (StringConv (..))
 import           Data.Text                 (Text)
 import           GHC.Generics              (Generic)
 import           Network.HTTP.Types.Header (RequestHeaders)
-import           Proto.EventLog            (Severity)
+import Proto.CommonLogRep (LogEntry)
 
 import qualified Data.Text                 as Text
 import qualified Data.Text.Encoding        as Text
@@ -43,5 +43,5 @@ type Source = Text
 type Msg = Text
 
 data NtsConfig = NtsConfig
-    { output :: Token -> Double -> Severity -> Source -> Msg -> IO ()
+    { output :: LogEntry -> IO ()
     }

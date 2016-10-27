@@ -1,26 +1,28 @@
 name:                negotians
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Initial project template from stack
 description:         Please see README.md
 homepage:            https://github.com/githubuser/negotians#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Danil
-maintainer:          example@example.com
-copyright:           2016 Author name here
+maintainer:          dpetrov@cyl.com
+copyright:           2016 Danil Petrov
 category:            Web
 build-type:          Custom
-extra-source-files:  proto-src/*.proto
+extra-source-files:  dschemas/proto-src/*.proto
 cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
   exposed-modules:     Proto.EventLog
-                     , Proto.InnerLogRep
-                     , Output.AMQP
+                     , Proto.CommonLogRep
+                     , Proto.Timestamp
+                     , Proto.Struct
                      , App
                      , Internal
                      , Output
+                     , Output.AMQP
                      , Output.GooglePubSub
   build-depends:       aeson >= 0.11,
                        amqp,
@@ -28,6 +30,7 @@ library
                        binary >= 0.8,
                        bytestring >= 0.10,
                        case-insensitive >= 1.2,
+                       containers >= 0.5,
                        cryptonite,
                        exceptions >= 0.8,
                        gogol >= 0.1,
@@ -35,6 +38,7 @@ library
                        http-types >= 0.9,
                        lens >= 4.14,
                        lens-family >= 1.2,
+                       logging-effect >= 1.1,
                        memory >= 0.13,
                        mtl,
                        proto-lens,
@@ -61,6 +65,14 @@ executable negotians-exe
                      , wai >= 3.2
                      , wai-extra >= 3.0
                      , warp >= 3.2
+                     , gogol >= 0.1
+                     , gogol-logging >= 0.1
+                     , gogol-pubsub >= 0.1
+                     , logging-effect >= 1.1
+                     , unordered-containers >= 0.2
+                     , logging-effect-google >= 0.1
+                     , lens >= 4.14
+                     , wai-logging-effect-google
   default-language:    Haskell2010
 
 test-suite negotians-test

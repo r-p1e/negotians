@@ -1,0 +1,24 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: negotians-production
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: negotians
+      labels:
+        app: negotians
+        env: production
+    spec:
+      containers:
+        - name: negotians
+          image: gcr.io/pinacta-147615/negotians:latest
+          imagePullPolicy: Always
+          ports:
+            - name: negotians
+              containerPort: 3000
+          command: ["negotians", "--env=$(ENV)"]
+          env:
+            - name: ENV
+              value: "production"

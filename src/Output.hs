@@ -4,11 +4,10 @@ module Output
     ) where
 
 import Data.Text (Text)
-import Internal (Msg, Source, Token)
 import Output.GooglePubSub (initGPS)
-import Proto.EventLog (Severity)
+import Proto.CommonLogRep (LogEntry)
 
 
 initOutput
-    :: IO (Token -> Double -> Severity -> Source -> Msg -> IO ())
+    :: IO (LogEntry -> IO ())
 initOutput = initGPS
