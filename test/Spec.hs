@@ -24,7 +24,7 @@ outputMock _ = return ()
 
 spec :: Spec
 spec =
-    with (return (app (NtsConfig outputMock))) $
+    with (return (app (outputMock))) $
     do describe "GET /notfound" $
            do it "responds with 404" $
                   do get "/notfound" `shouldRespondWith` 404
